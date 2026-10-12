@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Armador de encargos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ficha de trabajo en cinco pestañas (cuatro pasos y el resultado), columna única de lectura.
+   Acento azul petróleo = Niveles 1 y 2; el semáforo verde, ámbar y rojo queda reservado para estados. */
+:root{
+  --bg:#F2F6F8; --surface:#FFFFFF; --surface2:#E7EEF2; --ink:#14232E; --muted:#51636F; --line:#CFDAE1;
+  --accent:#0B6E8A; --accent-ink:#FFFFFF; --accent-soft:#DDF0F5;
+  --ok:#14733A; --ok-soft:#E0F2E7; --warn:#8F5600; --warn-soft:#FBEED2; --bad:#B3261E; --bad-soft:#FBE3E0;
+  --bad-ink:#B3261E; --code-bg:#10222C; --code-ink:#E3F0F5; --code-dim:#1B3441;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1A22; --surface:#13242E; --surface2:#1B3240; --ink:#E6F0F5; --muted:#9FB4C0; --line:#28424F;
+  --accent:#5CC8E3; --accent-ink:#06222B; --accent-soft:#12323D;
+  --ok:#5BDB8B; --ok-soft:#13301F; --warn:#F5B342; --warn-soft:#3A2A0B; --bad:#FF8A82; --bad-soft:#3B1613;
+  --code-bg:#08141A; --code-ink:#E3F0F5; --code-dim:#12262F; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0C1A22; --surface:#13242E; --surface2:#1B3240; --ink:#E6F0F5; --muted:#9FB4C0; --line:#28424F;
+  --accent:#5CC8E3; --accent-ink:#06222B; --accent-soft:#12323D;
+  --ok:#5BDB8B; --ok-soft:#13301F; --warn:#F5B342; --warn-soft:#3A2A0B; --bad:#FF8A82; --bad-soft:#3B1613;
+  --code-bg:#08141A; --code-ink:#E3F0F5; --code-dim:#12262F; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.5;padding-inline:16px;padding-block:28px 56px}
+.wrap{max-width:920px;margin-inline:auto}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(2.1rem,6vw,3.2rem);line-height:1.04;letter-spacing:-.02em;margin:.25rem 0 .6rem;text-wrap:balance}
+.lead{max-width:62ch;color:var(--muted);margin:0 0 1.4rem}
+h2{font-family:var(--font-display);font-weight:700;font-size:clamp(1.35rem,3.6vw,1.75rem);line-height:1.15;margin:0 0 .35rem;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:700;font-size:1.05rem;margin:1.6rem 0 .5rem}
+.hint{color:var(--muted);margin:0 0 1.1rem;max-width:64ch}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;padding:0;list-style:none}
+.steps button{width:100%;display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;cursor:pointer;text-align:left;min-width:0}
+.steps .n{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem;background:var(--surface2);color:var(--muted)}
+.steps .t{font-weight:600;font-size:.92rem;line-height:1.15;overflow-wrap:anywhere}
+.steps button[aria-current="step"]{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+.steps button[aria-current="step"] .n{background:var(--accent);color:var(--accent-ink)}
+.steps button.done .n{background:var(--ok-soft);color:var(--ok)}
+@media (max-width:640px){.steps .t{display:none}.steps button[aria-current="step"] .t{display:block}.steps{grid-template-columns:repeat(5,auto);justify-content:start}.steps button{padding:8px}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,4vw,32px)}
+.panel:focus{outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 1rem}
+.chip{padding:8px 14px;border:1px solid var(--line);background:var(--surface);border-radius:999px;cursor:pointer;font-weight:600;font-size:.95rem}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opts{display:grid;gap:8px;margin:0 0 1rem}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:var(--surface)}
+.opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.opt input{margin-top:.35rem;accent-color:var(--accent);width:18px;height:18px;flex:none}
+.opt .tx{min-width:0}
+.opt b{display:block;font-weight:600}
+.opt small{color:var(--muted)}
+.field{display:block;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin-top:8px}
+textarea.field{resize:vertical;min-height:5.2rem;line-height:1.45}
+.field:focus{border-color:var(--accent)}
+label.lab{display:block;font-weight:600;margin:1rem 0 .2rem}
+.note{padding:12px 14px;border-radius:12px;background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);margin:1rem 0;font-size:.97rem}
+.note b{color:var(--warn)}
+.note.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.note.ok b{color:var(--ok)}
+.note.info{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.note.info b{color:var(--accent)}
+.check{display:flex;gap:10px;align-items:flex-start;margin:.5rem 0;cursor:pointer}
+.check input{margin-top:.38rem;accent-color:var(--accent);width:18px;height:18px;flex:none}
+.btn{padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.num{width:5.2rem;display:inline-block;margin:0 6px;padding:5px 8px}
+.bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;margin:.4rem 0 1rem}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
+.pager .info{color:var(--muted);font-size:.9rem}
+.status{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;font-weight:700;font-size:.9rem;margin:.2rem 0 1rem}
+.status.ok{background:var(--ok-soft);color:var(--ok)}
+.status.pend{background:var(--warn-soft);color:var(--warn)}
+ul.pend{margin:.2rem 0 1rem;padding-left:1.2rem}
+.toggle{display:flex;gap:6px;margin:.4rem 0 1.2rem;flex-wrap:wrap}
+.toggle .chip{flex:1 1 220px;text-align:left;padding:12px 14px;border-radius:12px}
+.toggle .chip small{display:block;font-weight:400;opacity:.85}
+.ba{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px;margin:.4rem 0 .8rem}
+@media (max-width:700px){.ba{grid-template-columns:1fr}}
+.cap{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:0 0 6px}
+.cap.bad{color:var(--bad)} .cap.good{color:var(--ok)}
+.promptbox{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:16px 18px;font-family:var(--font-mono);font-size:.86rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 .8rem;max-height:30rem;overflow:auto}
+.promptbox.weak{background:var(--code-dim);opacity:.92}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toast{font-size:.92rem;color:var(--muted)}
+.how{margin:.4rem 0 0;padding-left:1.2rem}
+.how li{margin:.25rem 0}
+.docs{margin:.2rem 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.docs li{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.docs b{font-weight:600}
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <header>
+    <div class="eyebrow">Niveles 1 y 2 · Práctica</div>
+    <h1>Armador de encargos</h1>
+    <p class="lead">Un buen resultado empieza en un buen pedido. Completa cuatro pasos con una tarea real de tu oficina y obtendrás el pedido listo para pegar en el chat (Nivel 1) y las instrucciones de un Proyecto para que no tengas que repetirlo (Nivel 2). Los ejemplos son ilustrativos.</p>
+  </header>
+  <ol class="steps" id="steps" aria-label="Pasos"></ol>
+  <section class="panel" id="panel" tabindex="-1"></section>
+  <div class="pager">
+    <button class="btn" id="prev" type="button">Anterior</button>
+    <span class="info" id="info"></span>
+    <button class="btn primary" id="next" type="button">Siguiente</button>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+const STEPS=['Tarea','Contexto','Formato','Revisión','Tu encargo'];
+const FORMATOS=[
+ {id:'borrador',label:'Borrador de respuesta',p:'un borrador de respuesta en prosa, con saludo y cierre institucional'},
+ {id:'tabla',label:'Tabla',p:'una tabla con una fila por caso y las columnas que correspondan a la tarea'},
+ {id:'puntos',label:'Puntos clave',p:'una lista de puntos clave, del más urgente al menos urgente'},
+ {id:'resumen',label:'Resumen de una página',p:'un resumen ejecutivo de una página, con lo decisivo al principio'}
+];
+const AREAS=[
+ {id:'acad',label:'Secretaría Académica',p:[
+  {t:'Responder una consulta de un estudiante sobre equivalencias',m:'consultas de estudiantes y las resoluciones aplicables',f:'borrador'},
+  {t:'Ordenar las solicitudes de correlatividades pendientes',m:'listados de solicitudes',f:'tabla'}]},
+ {id:'ext',label:'Secretaría de Extensión',p:[
+  {t:'Revisar el cumplimiento formal de una propuesta de curso de extensión',m:'propuestas de cursos y el reglamento de extensión',f:'puntos'},
+  {t:'Redactar el comunicado de una convocatoria abierta',m:'bases de la convocatoria',f:'borrador'}]},
+ {id:'cyt',label:'Ciencia y Tecnología',p:[
+  {t:'Responder una consulta sobre requisitos de un informe de avance',m:'consultas de directores de proyecto y las bases de la convocatoria',f:'borrador'},
+  {t:'Resumir el estado de una convocatoria de proyectos',m:'planillas de solicitudes y rendiciones',f:'resumen'}]},
+ {id:'pos',label:'Posgrado',p:[
+  {t:'Verificar si un aspirante cumple los requisitos de admisión',m:'legajos de aspirantes y el reglamento de la carrera',f:'puntos'},
+  {t:'Controlar los plazos de las tesis en curso',m:'listados de tesistas y fechas',f:'tabla'}]},
+ {id:'cs',label:'Consejo Superior',p:[
+  {t:'Resumir un expediente para el orden del día',m:'expedientes completos',f:'resumen'},
+  {t:'Redactar un proyecto de resolución',m:'dictámenes y antecedentes del expediente',f:'borrador'}]},
+ {id:'vin',label:'Vinculación Tecnológica',p:[
+  {t:'Responder a una empresa que consulta por un convenio',m:'consultas de empresas y modelos de convenio',f:'borrador'},
+  {t:'Revisar las cláusulas de un convenio antes de firmarlo',m:'borradores de convenio',f:'puntos'}]},
+ {id:'rec',label:'Rectorado',p:[
+  {t:'Preparar el resumen semanal de pendientes',m:'informes de cada secretaría',f:'resumen'},
+  {t:'Redactar una nota institucional',m:'antecedentes y datos del tema',f:'borrador'}]}
+];
+const TONOS={formal:'formal e institucional',claro:'claro y cercano, sin perder el registro institucional',tecnico:'técnico y preciso'};
+const REVISION=[
+ 'Verifico fechas, plazos y montos contra el original.',
+ 'Verifico toda norma citada contra el texto vigente.',
+ 'Verifico nombres, cargos y cifras.',
+ 'Reviso que no haya datos personales de más antes de enviarlo o archivarlo.'
+];
+const KEY='ae_v1';
+const fresh=()=>({step:0,area:null,tarea:null,otra:'',material:'',formato:'borrador',rol:'',contexto:'',tono:'formal',
+ crit:{pal:true,n:150,norma:true,corch:true,deriva:true,pregunta:true},limite:true,datos:false,rev:[false,false,false,false],vista:1});
+let S=fresh();
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);S=Object.assign(fresh(),o);S.crit=Object.assign(fresh().crit,o.crit||{});if(!Array.isArray(S.rev)||S.rev.length!==4)S.rev=[false,false,false,false]}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const low=s=>s.charAt(0).toLowerCase()+s.slice(1);
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const area=()=>AREAS.find(a=>a.id===S.area);
+const tareaName=()=>S.otra.trim()||S.tarea||'';
+const fmt=()=>FORMATOS.find(f=>f.id===S.formato)||FORMATOS[0];
+const rolName=()=>S.rol.trim()||('asistente de '+(area()?area().label:'una oficina universitaria'));
+const stripDot=s=>s.trim().replace(/[.\s]+$/,'');
+
+function missing(){
+  const m=[];
+  if(!tareaName())m.push('Elegir o escribir una tarea (paso 1)');
+  if(!S.contexto.trim())m.push('Describir el contexto (paso 2)');
+  const n=S.rev.filter(Boolean).length;
+  if(n<4)m.push('Comprometer la revisión: '+n+' de 4 comprobaciones (paso 4)');
+  return m;
+}
+function stepDone(i){
+  if(i===0)return !!tareaName();
+  if(i===1)return !!S.contexto.trim();
+  if(i===2)return !!S.formato;
+  if(i===3)return S.rev.every(Boolean);
+  return false;
+}
+function renderSteps(){
+  const ol=$('#steps');
+  ol.innerHTML=STEPS.map((t,i)=>{
+    const done=i<4&&stepDone(i)&&(i!==2||S.step>2);
+    return `<li><button type="button" data-go="${i}" class="${done?'done':''}" ${i===S.step?'aria-current="step"':''}><span class="n">${done?'✓':i+1}</span><span class="t">${t}</span></button></li>`;
+  }).join('');
+  $$('button',ol).forEach(b=>b.onclick=()=>go(+b.dataset.go));
+}
+function go(i){
+  S.step=Math.max(0,Math.min(4,i));save();render();
+  const p=$('#panel');p.scrollIntoView({block:'start',behavior:'auto'});p.focus({preventScroll:true});
+}
+function pager(){
+  $('#prev').disabled=S.step===0;
+  const nx=$('#next');
+  nx.style.visibility=S.step===4?'hidden':'visible';
+  nx.disabled=S.step===0&&!tareaName();
+  $('#info').textContent=S.step<4?`Paso ${S.step+1} de 4`:'Resultado';
+}
+function render(){renderSteps();[step1,step2,step3,step4,step5][S.step]();pager();}
+$('#prev').onclick=()=>go(S.step-1);
+$('#next').onclick=()=>go(S.step+1);
+
+/* ---------- paso 1 ---------- */
+function step1(){
+  const P=$('#panel');
+  P.innerHTML=`<h2>1. Elige una tarea concreta</h2>
+  <p class="hint">Cuanto más concreta la tarea, mejor el pedido. «Ayudar con consultas» es vago; «responder una consulta sobre equivalencias» ya se puede encargar.</p>
+  <div class="eyebrow" style="margin-bottom:8px">Tu área</div>
+  <div class="chips" id="areas" role="group" aria-label="Área">${AREAS.map(a=>`<button type="button" class="chip" data-a="${a.id}" aria-pressed="${S.area===a.id}">${a.label}</button>`).join('')}</div>
+  <div id="procs"></div>
+  <label class="lab" for="otra">¿Tu tarea no está en la lista? Escríbela</label>
+  <input class="field" id="otra" type="text" maxlength="180" placeholder="Ej.: redactar la respuesta a un pedido de prórroga de un informe" value="${esc(S.otra)}">
+  <div class="note info"><b>Para elegir bien.</b> Una tarea que haces seguido y cuyo resultado sabes juzgar es la mejor candidata. Si no puedes decir si la respuesta está bien o mal, la IA no podrá compensarlo.</div>`;
+  $$('#areas .chip').forEach(b=>b.onclick=()=>{S.area=b.dataset.a;save();step1();pager()});
+  drawProcs();
+  $('#otra').oninput=e=>{S.otra=e.target.value;if(S.otra.trim()){S.tarea=null;$$('#procs input').forEach(i=>i.checked=false)}save();pager();renderSteps()};
+}
+function drawProcs(){
+  const box=$('#procs');const a=area();
+  if(!a){box.innerHTML='<p class="hint">Elige tu área para ver tareas típicas.</p>';return}
+  box.innerHTML=`<div class="opts" role="radiogroup" aria-label="Tareas de ${esc(a.label)}">${a.p.map((p,i)=>`<label class="opt"><input type="radio" name="tarea" value="${i}" ${S.tarea===p.t&&!S.otra.trim()?'checked':''}><span class="tx"><b>${esc(p.t)}</b></span></label>`).join('')}</div>`;
+  $$('input',box).forEach(inp=>inp.onchange=()=>{
+    const p=a.p[+inp.value];S.tarea=p.t;S.otra='';$('#otra').value='';
+    S.material=p.m;S.formato=p.f;save();pager();renderSteps();
+  });
+}
+
+/* ---------- paso 2 ---------- */
+function step2(){
+  const P=$('#panel');
+  P.innerHTML=`<h2>2. Dale contexto a la IA</h2>
+  <p class="hint">La IA no conoce tu oficina. Lo que no le cuentas, lo inventa o lo supone. Aquí va lo que le dirías a una persona nueva que se incorpora al equipo.</p>
+  <label class="lab" for="rol" style="margin-top:0">Rol que debe asumir</label>
+  <input class="field" id="rol" type="text" maxlength="120" placeholder="${esc(rolName())}" value="${esc(S.rol)}">
+  <label class="lab" for="ctx">Contexto: quién eres, para quién es y qué está en juego</label>
+  <textarea class="field" id="ctx" maxlength="900" placeholder="Ej.: Soy secretario de Posgrado de una facultad regional. Respondo a aspirantes a una especialización. La respuesta debe ser clara y respetar el reglamento vigente.">${esc(S.contexto)}</textarea>
+  <label class="lab" for="mat">Qué material le pasarás cada vez</label>
+  <input class="field" id="mat" type="text" maxlength="160" placeholder="Ej.: el correo del aspirante y el reglamento de la carrera" value="${esc(S.material)}">
+  <label class="lab" for="tono">Tono</label>
+  <select class="field" id="tono" style="max-width:420px">${Object.entries(TONOS).map(([k,v])=>`<option value="${k}" ${S.tono===k?'selected':''}>${cap(v)}</option>`).join('')}</select>
+  <div class="note info"><b>Sin contexto, mal resultado.</b> Si falta información, el pedido final le pedirá que te haga preguntas antes de redactar.</div>`;
+  $('#rol').oninput=e=>{S.rol=e.target.value;save()};
+  $('#ctx').oninput=e=>{S.contexto=e.target.value;save();renderSteps()};
+  $('#mat').oninput=e=>{S.material=e.target.value;save()};
+  $('#tono').onchange=e=>{S.tono=e.target.value;save()};
+}
+
+/* ---------- paso 3 ---------- */
+function step3(){
+  const P=$('#panel');
+  P.innerHTML=`<h2>3. Define el formato y los límites</h2>
+  <p class="hint">Un resultado útil tiene forma, extensión y criterios. Sin ellos, cada respuesta sale distinta y hay que rehacerla.</p>
+  <h3 style="margin-top:.4rem">Qué quieres recibir</h3>
+  <div class="chips" role="radiogroup" aria-label="Formato">${FORMATOS.map(f=>`<button type="button" class="chip" role="radio" data-f="${f.id}" aria-checked="${S.formato===f.id}" aria-pressed="${S.formato===f.id}">${f.label}</button>`).join('')}</div>
+  <h3>Criterios que debe cumplir</h3>
+  <label class="check"><input type="checkbox" id="c-pal" ${S.crit.pal?'checked':''}><span>Menos de <input class="field num" id="c-n" type="number" min="30" max="1000" step="10" value="${S.crit.n}" aria-label="Cantidad de palabras"> palabras.</span></label>
+  <label class="check"><input type="checkbox" id="c-norma" ${S.crit.norma?'checked':''}><span>Cita solo la normativa que le paso; no inventa números, artículos ni fechas.</span></label>
+  <label class="check"><input type="checkbox" id="c-corch" ${S.crit.corch?'checked':''}><span>Si falta un dato, lo marca entre corchetes.</span></label>
+  <label class="check"><input type="checkbox" id="c-deriva" ${S.crit.deriva?'checked':''}><span>No otorga prórrogas ni excepciones; deriva al órgano competente.</span></label>
+  <label class="check"><input type="checkbox" id="c-pregunta" ${S.crit.pregunta?'checked':''}><span>Si le falta información, me hace preguntas antes de redactar.</span></label>
+  <h3>Límites</h3>
+  <label class="check"><input type="checkbox" id="limite" ${S.limite?'checked':''}><span>No firma, no decide ni da por aprobado ningún trámite: eso corresponde a la autoridad competente.</span></label>
+  <label class="check"><input type="checkbox" id="datos" ${S.datos?'checked':''}><span>El material contiene datos personales (DNI, legajos, calificaciones).</span></label>
+  <div id="note3"></div>`;
+  $$('[data-f]').forEach(b=>b.onclick=()=>{S.formato=b.dataset.f;save();$$('[data-f]').forEach(x=>{const on=x.dataset.f===S.formato;x.setAttribute('aria-pressed',on);x.setAttribute('aria-checked',on)});renderSteps()});
+  [['c-pal','pal'],['c-norma','norma'],['c-corch','corch'],['c-deriva','deriva'],['c-pregunta','pregunta']].forEach(([id,k])=>$('#'+id).onchange=e=>{S.crit[k]=e.target.checked;save()});
+  $('#c-n').oninput=e=>{const v=parseInt(e.target.value,10);if(v>0){S.crit.n=v;save()}};
+  $('#limite').onchange=e=>{S.limite=e.target.checked;save()};
+  $('#datos').onchange=e=>{S.datos=e.target.checked;save();note3()};
+  note3();
+}
+function note3(){
+  $('#note3').innerHTML=S.datos?'<div class="note"><b>Ley 25.326.</b> Los datos personales solo pueden usarse para la finalidad con que se obtuvieron y deben protegerse. Usa solo la cuenta y las herramientas que tu institución habilite, reemplaza nombres y números por marcadores cuando puedas y consulta a Sistemas y Asuntos Jurídicos. El pedido incluirá una cláusula de confidencialidad.</div>':'';
+}
+
+/* ---------- paso 4 ---------- */
+function step4(){
+  const P=$('#panel');
+  P.innerHTML=`<h2>4. Comprométete a revisar</h2>
+  <p class="hint">Un buen pedido reduce los errores, pero no los elimina. La IA redacta y propone; tú revisas y la autoridad competente decide y firma. Marca lo que vas a comprobar siempre antes de usar el resultado.</p>
+  <div class="bar" aria-hidden="true"><i id="pbar"></i></div>
+  <div>${REVISION.map((t,i)=>`<label class="check"><input type="checkbox" data-r="${i}" ${S.rev[i]?'checked':''}><span>${t}</span></label>`).join('')}</div>
+  <div id="pmsg"></div>`;
+  $$('[data-r]').forEach(c=>c.onchange=()=>{S.rev[+c.dataset.r]=c.checked;save();pmsg();renderSteps()});
+  pmsg();
+}
+function pmsg(){
+  const n=S.rev.filter(Boolean).length;
+  $('#pbar').style.width=(n/4*100)+'%';
+  $('#pmsg').innerHTML=n===4?'<div class="note ok"><b>Listo.</b> Ve a «Tu encargo» para copiar el pedido y las instrucciones del Proyecto.</div>':`<p class="hint" style="margin:.6rem 0 0">${n} de 4 comprobaciones. Puedes ver el resultado igual, pero queda como borrador.</p>`;
+}
+
+/* ---------- textos generados ---------- */
+function criterios(){
+  const c=[];
+  if(S.crit.pal)c.push(`Menos de ${S.crit.n} palabras.`);
+  if(S.crit.norma)c.push('Cita solo la normativa que te entrego; no inventes números de resolución, artículos ni fechas.');
+  if(S.crit.corch)c.push('Si falta un dato, márcalo entre corchetes.');
+  if(S.crit.deriva)c.push('No otorgues prórrogas ni excepciones; deriva al órgano competente.');
+  return c;
+}
+function limites(){
+  const l=[];
+  if(S.limite)l.push('No firmes, no decidas ni des por aprobado ningún trámite: eso corresponde a la autoridad competente.');
+  if(S.datos)l.push('El material contiene datos personales: trátalos con confidencialidad (Ley 25.326) y no los reproduzcas fuera de lo que te pido.');
+  return l;
+}
+function promptAntes(){
+  const t=tareaName();
+  return t?`${cap(stripDot(t))}.`:'(elige una tarea)';
+}
+function promptN1(){
+  const t=tareaName()||'(elige una tarea)';
+  const L=[];
+  L.push(`Actúa como ${rolName()}.`,'');
+  L.push(`Contexto: ${S.contexto.trim()||'(describe el contexto)'}`,'');
+  L.push(`Tarea: ${stripDot(t)}.`);
+  L.push(`Material: ${S.material.trim()?'te paso '+stripDot(S.material)+' a continuación.':'te paso el material a continuación.'}`,'');
+  L.push(`Entrega: ${fmt().p}, en tono ${TONOS[S.tono]}.`);
+  const c=criterios();
+  if(c.length){L.push('','Criterios:');c.forEach(x=>L.push('- '+x))}
+  const l=limites();
+  if(l.length){L.push('','Límites:');l.forEach(x=>L.push('- '+x))}
+  if(S.crit.pregunta)L.push('','Antes de redactar, hazme las preguntas que necesites si te falta información.');
+  L.push('','Material:','[pega aquí el texto]');
+  return L.join('\n');
+}
+function promptN2(){
+  const t=tareaName()||'(elige una tarea)';
+  const L=[];
+  L.push(`Eres ${rolName()}.`,'');
+  L.push(`Contexto de este Proyecto: ${S.contexto.trim()||'(describe el contexto)'}`,'');
+  L.push(`Trabajo recurrente: ${stripDot(t)}.`);
+  L.push(`Cada vez que te pase ${S.material.trim()?stripDot(S.material):'el material de trabajo'}, hazlo así:`);
+  L.push(`1. Entrega ${fmt().p}, en tono ${TONOS[S.tono]}.`);
+  const c=criterios();
+  let n=2;
+  if(c.length){L.push(`${n++}. Cumple siempre estos criterios:`);c.forEach(x=>L.push('   - '+x))}
+  L.push(`${n++}. Usa como fuentes los documentos cargados en este Proyecto y menciona de cuál sacas cada dato.`);
+  if(S.crit.pregunta)L.push(`${n++}. Si te falta información, hazme preguntas antes de redactar.`);
+  const l=limites();
+  if(l.length){L.push('','Límites permanentes:');l.forEach(x=>L.push('- '+x))}
+  L.push('','Al terminar, indica por cada criterio si se cumple y señala qué debo revisar primero.');
+  return L.join('\n');
+}
+function docsBase(){
+  const d=[];
+  if(S.crit.norma)d.push(['Normativa vigente','Reglamentos y resoluciones aplicables, en su versión actual. Es la única fuente que la IA puede citar.']);
+  d.push(['Modelos aprobados','Dos o tres respuestas anteriores bien resueltas, para que copie la estructura y el tono.']);
+  if(S.crit.deriva)d.push(['Órganos competentes','Un listado de a quién se deriva cada tipo de pedido (consejo, secretaría, comisión).']);
+  d.push(['Glosario y siglas','Los nombres propios de tu institución, sus siglas y sus cargos, escritos como corresponde.']);
+  return d;
+}
+function fichaRows(){
+  const a=area();
+  return {area:a?a.label:'',tarea:tareaName(),rol:rolName(),formato:fmt().label,tono:cap(TONOS[S.tono]),crit:criterios(),lim:limites(),rev:REVISION.filter((_,i)=>S.rev[i]),docs:docsBase()};
+}
+function fichaHTML(){
+  const r=fichaRows();const li=a=>a.length?'<ul>'+a.map(x=>`<li>${esc(x)}</li>`).join('')+'</ul>':'<p>—</p>';
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha de encargo</title><style>
+body{font:15px/1.5 Calibri,"Segoe UI",sans-serif;color:#14232E;max-width:760px;margin:32px auto;padding:0 20px}
+h1{font-size:26px;margin:0 0 4px}.sub{color:#51636F;margin:0 0 20px}h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#0B6E8A;margin:22px 0 6px;border-bottom:1px solid #CFDAE1;padding-bottom:4px}
+ul{margin:0;padding-left:20px}pre{background:#EEF3F6;border-radius:8px;padding:14px;white-space:pre-wrap;font:13px/1.5 Consolas,monospace}
+</style></head><body><h1>Ficha de encargo</h1><p class="sub">Niveles 1 y 2 · ${esc(r.area)}</p>
+<h2>Tarea</h2><p>${esc(r.tarea)}</p><h2>Rol</h2><p>${esc(r.rol)}</p><h2>Formato y tono</h2><p>${esc(r.formato)} · ${esc(r.tono)}</p>
+<h2>Criterios</h2>${li(r.crit)}<h2>Límites</h2>${li(r.lim)}<h2>Mi revisión antes de usar el resultado</h2>${li(r.rev)}
+<h2>Pedido para el chat (Nivel 1)</h2><pre>${esc(promptN1())}</pre>
+<h2>Instrucciones del Proyecto (Nivel 2)</h2><pre>${esc(promptN2())}</pre>
+<h2>Documentos para cargar en el Proyecto</h2>${li(r.docs.map(d=>d[0]+': '+d[1]))}
+<p class="sub">La IA redacta, analiza y propone; la autoridad competente revisa, decide y firma.</p></body></html>`;
+}
+
+/* ---------- paso 5 ---------- */
+let dl=null;
+function step5(){
+  const P=$('#panel');const miss=missing();const ok=miss.length===0;
+  const v=S.vista===2?2:1;
+  const n1=promptN1(),n2=promptN2();
+  P.innerHTML=`<h2>Tu encargo</h2>
+  <div class="status ${ok?'ok':'pend'}">${ok?'Listo para usar':'Borrador: faltan '+miss.length+' puntos'}</div>
+  ${ok?'':`<ul class="pend">${miss.map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`}
+  <div class="toggle" role="group" aria-label="Nivel">
+    <button type="button" class="chip" data-v="1" aria-pressed="${v===1}">Nivel 1 · Pedido<small>Para pegar en el chat y usarlo una vez</small></button>
+    <button type="button" class="chip" data-v="2" aria-pressed="${v===2}">Nivel 2 · Proyecto<small>Instrucciones fijas que no repites</small></button>
+  </div>
+  <div id="vista"></div>
+  <div class="actions" style="margin-top:6px"><button class="btn primary" id="cp" type="button">Copiar texto</button>
+   <button class="btn" id="d1" type="button" hidden>Guardar ficha (.html)</button>
+   <button class="btn" id="d2" type="button" hidden>Guardar texto (.txt)</button>
+   <span class="toast" id="toast" role="status"></span></div>`;
+  $$('[data-v]').forEach(b=>b.onclick=()=>{S.vista=+b.dataset.v;save();step5()});
+  const box=$('#vista');
+  if(v===1){
+    box.innerHTML=`<p class="hint">Es el mismo trabajo, pedido de dos maneras. A la derecha, el pedido completo: la IA sabe quién es, para quién trabaja, qué debe entregar y qué no puede hacer.</p>
+    <div class="ba"><div><div class="cap bad">Antes</div><div class="promptbox weak" style="max-height:none">${esc(promptAntes())}</div></div>
+    <div><div class="cap good">Después</div><div class="promptbox" id="pr" tabindex="0">${esc(n1)}</div></div></div>
+    <div class="note info"><b>¿Lo repites cada semana?</b> Entonces conviene pasarlo al Nivel 2: las instrucciones se escriben una vez y no las pegas cada vez. <button type="button" class="btn" id="irN2" style="margin-left:6px;padding:6px 12px">Ver Nivel 2</button></div>`;
+    $('#irN2').onclick=()=>{S.vista=2;save();step5()};
+  }else{
+    box.innerHTML=`<p class="hint">Pega este texto en las instrucciones de un Proyecto de Claude. Desde entonces solo pasas el material de cada caso y el resto ya está dicho.</p>
+    <div class="cap good">Instrucciones del Proyecto</div>
+    <div class="promptbox" id="pr" tabindex="0">${esc(n2)}</div>
+    <h3>Documentos para cargar en el Proyecto</h3>
+    <ul class="docs">${docsBase().map(d=>`<li><b>${esc(d[0])}.</b> ${esc(d[1])}</li>`).join('')}</ul>
+    <h3>Cómo armarlo</h3>
+    <ol class="how"><li>Crea un Proyecto nuevo y ponle el nombre de la tarea.</li>
+    <li>Pega las instrucciones en el campo de instrucciones del Proyecto.</li>
+    <li>Sube los documentos de la lista, solo versiones vigentes.</li>
+    <li>Prueba con un caso real anonimizado y compara con tu versión manual antes de confiar en él.</li></ol>
+    <div class="note info"><b>¿Ya lo haces cada semana y funciona?</b> El Nivel 3 lo programa para que corra solo. Se trabaja en la actividad «Mi primer sistema».</div>`;
+  }
+  $('#cp').onclick=copy;
+  if(dl){$('#d1').hidden=false;$('#d2').hidden=false;
+    $('#d1').onclick=()=>saveFile('ficha-de-encargo.html',fichaHTML());
+    $('#d2').onclick=()=>saveFile(v===1?'pedido-nivel-1.txt':'instrucciones-proyecto-nivel-2.txt',v===1?n1:n2);}
+}
+function toast(t){const e=$('#toast');if(e)e.textContent=t}
+async function copy(){
+  const txt=S.vista===2?promptN2():promptN1();
+  try{await navigator.clipboard.writeText(txt);toast('Texto copiado.');return}catch(e){}
+  const pr=$('#pr');if(!pr)return;const rg=document.createRange();rg.selectNodeContents(pr);const sel=getSelection();sel.removeAllRanges();sel.addRange(rg);
+  toast('Texto seleccionado: cópialo con Ctrl+C.');
+}
+async function saveFile(name,data){
+  try{await dl.save({filename:name,data});toast('Archivo guardado.')}
+  catch(e){toast(e&&e.code==='declined'?'No se guardó el archivo.':'No se pudo guardar el archivo en esta vista.')}
+}
+render();
+try{
+  if(window.claude&&window.claude.use){window.claude.use('downloads').then(d=>{dl=d;if(S.step===4)step5()}).catch(()=>{})}
+  else{dl={save:async({filename,data})=>{const u=URL.createObjectURL(new Blob([data],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}};if(S.step===4)step5()}
+}catch(e){}
+})();
+</script>
+
+</body>
+</html>
